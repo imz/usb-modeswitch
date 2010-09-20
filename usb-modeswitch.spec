@@ -1,13 +1,14 @@
 Summary: usb-modeswitch is  a mode switching tool for controlling "flip flop" (multiple device) USB gear. 
 Name: usb-modeswitch 
 Version: 1.1.4
-Release: alt1
+Release: alt2
 License: GPL
 
 Group:  System/Configuration/Hardware
 URL: http://www.draisberghof.de/usb_modeswitch/
 Source0: %name-%version.tar
 
+Requires: usb-modeswitch-data
 BuildRequires: tcl libusb-compat-devel 
 
 %add_findreq_skiplist /usr/sbin/usb_modeswitch_dispatcher
@@ -24,6 +25,8 @@ After that (and on every consecutive plugging) this driver switches the
 mode internally, the storage device vanishes (in most cases), and a new
 device (like a USB modem) shows up. The WWAN gear maker Option calls
 that feature "ZeroCD (TM)".
+
+Needed for MTS (and others) branded e1550 modems.
 
 %prep
 
@@ -44,6 +47,9 @@ DESTDIR=%buildroot make install
 
 
 %changelog
+* Mon Sep 20 2010 Anton V. Boyarshinov <boyarsh@altlinux.ru> 1.1.4-alt2
+- dependence on usb-modeswitch-data added
+
 * Fri Sep 17 2010 Anton V. Boyarshinov <boyarsh@altlinux.ru> 1.1.4-alt1
 - first build
 
