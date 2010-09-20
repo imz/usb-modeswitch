@@ -10,6 +10,8 @@ Source0: %name-%version.tar
 
 Requires: usb-modeswitch-data
 BuildRequires: tcl libusb-compat-devel 
+Provides: usb_modeswitch
+Obsoletes: usb_modeswitch
 
 %add_findreq_skiplist /usr/sbin/usb_modeswitch_dispatcher
 %add_findprov_skiplist /usr/sbin/usb_modeswitch_dispatcher
@@ -49,6 +51,7 @@ DESTDIR=%buildroot make install
 %changelog
 * Mon Sep 20 2010 Anton V. Boyarshinov <boyarsh@altlinux.ru> 1.1.4-alt2
 - dependence on usb-modeswitch-data added
+- provides & obsoletes
 
 * Fri Sep 17 2010 Anton V. Boyarshinov <boyarsh@altlinux.ru> 1.1.4-alt1
 - first build
