@@ -49,8 +49,8 @@ DESTDIR=%buildroot make install
 
 
 %changelog
-* Wed Jun 29 2011 Paul Wolneykien <manowar@altlinux.ru> 1.1.8-alt1
-- 1.1.8.
+* Fri Jul 01 2011 Anton V. Boyarshinov <boyarsh@altlinux.ru> 1.1.8-alt1
+- 1.1.8 by manowar@
 
 * Mon Feb 21 2011 Anton V. Boyarshinov <boyarsh@altlinux.ru> 1.1.6-alt1
 - 1.1.6
