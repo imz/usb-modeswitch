@@ -1,7 +1,7 @@
 Summary: usb-modeswitch is  a mode switching tool for controlling "flip flop" (multiple device) USB gear. 
 Name: usb-modeswitch 
-Version: 1.1.5
-Release: alt1.M50P.1
+Version: 1.1.8
+Release: alt0.M50P.1
 License: GPL
 
 Group:  System/Configuration/Hardware
@@ -49,6 +49,15 @@ DESTDIR=%buildroot make install
 
 
 %changelog
+* Wed May 02 2012 Andrey Cherepanov <cas@altlinux.org> 1.1.8-alt0.M50P.1
+- Backport to p5 branch new version 
+
+* Fri Jul 01 2011 Anton V. Boyarshinov <boyarsh@altlinux.ru> 1.1.8-alt1
+- 1.1.8 by manowar@
+
+* Mon Feb 21 2011 Anton V. Boyarshinov <boyarsh@altlinux.ru> 1.1.6-alt1
+- 1.1.6
+
 * Tue Feb 08 2011 Andrey Cherepanov <cas@altlinux.org> 1.1.5-alt1.M50P.1
 - Backport to p5 branch
 

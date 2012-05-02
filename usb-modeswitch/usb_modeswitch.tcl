@@ -5,16 +5,16 @@
 # (part of data pack "usb-modeswitch-data") via
 # /lib/udev/usb_modeswitch
 #
-# Does ID check on hotplugged USB devices and calls the
-# mode switching program with the matching parameter file
-# from /etc/usb_modeswitch.d
+# Does ID check on newly discovered USB devices and calls
+# the mode switching program with the matching parameter
+# file from /usr/share/usb_modeswitch
 #
-# Part of usb-modeswitch-1.1.4 package
-# (C) Josua Dietze 2009, 2010
+# Part of usb-modeswitch-1.1.8 package
+# (C) Josua Dietze 2009, 2010, 2011
 
 
 # Setting of the these switches is done in the global config
-# file (/etc/usb_modeswitch.conf)
+# file (/etc/usb_modeswitch.conf) if available
 
 set logging 0
 set noswitching 0
@@ -34,30 +34,26 @@ set loginit [ParseGlobalConfig]
 # ttyUSB port which provides interrupt transfer, i.e.
 # the port to connect through; returns a symlink name
 # for udev and exits
-# This is run once for every device interface by an
-# udev rule
+# This is run once for every known device interface by
+# an udev rule
 
 if {[lindex $argv 0] == "--symlink-name"} {
 	if $logging {
 		set device [clock clicks]
 	}
-	puts [SymLinkName [lindex $argv 1]]
+	puts -nonewline [SymLinkName [lindex $argv 1]]
 	SafeExit
 }
 
-# The facility to bind the driver on-the-fly after a warm
-# boot; the device is still in modem mode but if the
-# driver was bound by the switching script before (ID
-# not yet added to the driver), the device needs to be
-# bound again
+set settings(dbdir)	/usr/share/usb_modeswitch
+set settings(dbdir_etc)	/etc/usb_modeswitch.d
 
-if {[lindex $argv 0] == "--driver-bind"} {
-	CheckDriverBind [lindex $argv 1] [lindex $argv 2] [lindex $argv 3] [lindex $argv 4]
+if {![file exists $settings(dbdir)] && ![file exists $settings(dbdir_etc)]} {
+	set device "noname"
+	Log "Error: no config database found in /usr/share or /etc. Exiting"
 	SafeExit
 }
-
-set settings(dbdir)	/etc/usb_modeswitch.d
-set bindir	/usr/sbin
+set bindir /usr/sbin
 
 set devList1 {}
 set devList2 {}
@@ -73,7 +69,7 @@ if [string length [lindex $argList 1]] {
 	set device "noname"
 }
 
-Log "raw args from udev: $argv\n\n$loginit"
+Log "Raw args from udev: $argv\n\n$loginit"
 
 if {$device == "noname"} {
 	Log "No data from udev. Exiting"
@@ -148,11 +144,18 @@ if $noswitching {
 	SafeExit
 }
 
+if {$usb(bNumConfigurations) == "1"} {
+	set configParam "-u -1"
+	Log "bNumConfigurations is 1 - don't check for active configuration"
+} else {
+	set configParam ""
+}
+
 # Check if there is more than one config file for this USB ID,
-# which would point to a possible ambiguity. If so, check if
+# which would make an attribute test necessary. If so, check if
 # SCSI values are needed
 
-set configList [ConfigGet list $usb(idVendor):$usb(idProduct)]
+set configList [ConfigGet conflist $usb(idVendor):$usb(idProduct)]
 
 if {[llength $configList] == 0} {
 	Log "Aargh! Config file missing for $usb(idVendor):$usb(idProduct)! Exiting"
@@ -262,42 +265,43 @@ if {$scsiNeeded && $scsi(vendor)==""} {
 # Time to check for a matching config file.
 # Matching itself is done by MatchDevice
 #
-# Sorting the configuration file names reverse so that
+# The configuration file names are sorted reverse so that
 # the ones with matching additions are tried first; the
 # common configs without match attributes are used at the
 # end and provide a fallback
 
 set report {}
-foreach configuration [lsort -decreasing $configList] {
+foreach configuration $configList {
 
 	# skipping installer leftovers
 	if [regexp {\.(dpkg|rpm)} $configuration] {continue}
 
 	Log "checking config: $configuration"
 	if [MatchDevice $configuration] {
-		ParseDeviceConfig [ConfigGet config $configuration]
-		set devList1 [glob -nocomplain /dev/ttyUSB* /dev/ttyACM* /dev/ttyHS*]
+		ParseDeviceConfig [ConfigGet conffile $configuration]
+		set devList1 [ListSerialDevs]
 		if {$config(waitBefore) == ""} {
 			Log "! matched, now switching"
 		} else {
 			Log "! matched, waiting time set to $config(waitBefore) seconds"
-			after [expr $config(waitBefore) * 1000]
+			append config(waitBefore) "000"
+			after $config(waitBefore)
 			Log " waiting is over, switching starts now"
 		}
 
 		# Now we are actually switching
 		if $logging {
 			Log " (running command: $bindir/usb_modeswitch -I -W -c $settings(tmpConfig))"
-			set report [exec $bindir/usb_modeswitch -I -W -D -c $settings(tmpConfig) 2>@ stdout]
+			set report [exec $bindir/usb_modeswitch -I -W -D -c $settings(tmpConfig) $configParam 2>@ stdout]
 		} else {
-			set report [exec $bindir/usb_modeswitch -I -Q -D -c $settings(tmpConfig) 2>/dev/null]
+			set report [exec $bindir/usb_modeswitch -I -Q -D -c $settings(tmpConfig) $configParam 2>/dev/null]
 		}
-		Log "\nverbose output of usb_modeswitch:"
+		Log "\nVerbose debug output of usb_modeswitch and libusb follows\n(Note that some USB errors are expected in the process)"
 		Log "--------------------------------"
 		Log $report
 		Log "--------------------------------"
 		Log "(end of usb_modeswitch output)\n"
-		if [regexp {/tmp/} $settings(tmpConfig)] {
+		if [regexp {/var/lib/usb_modeswitch} $settings(tmpConfig)] {
 			file delete  $settings(tmpConfig)
 		}
 		break
@@ -312,20 +316,22 @@ foreach configuration [lsort -decreasing $configList] {
 # If switching was OK we now check for drivers by
 # simply recounting serial devices under /dev
 
-# If target ID given, driver shall be loaded
-if [regexp -nocase {ok:[0-9a-f]{4}:[0-9a-f]{4}|ok:no_data} $report] {
-
-	if {![file isdirectory $devdir]} {
-		Log "Device directory in sysfs is gone! Something went wrong, aborting"
-		SafeExit
-	}
-
+if {![file isdirectory $devdir]} {
+	Log "Device directory in sysfs is gone! Something went wrong, aborting"
+	SafeExit
+}
 	# Give the device annother second if it's not fully back yet
 	if {![file exists $devdir/idProduct]} {
 		after 1000
 	}
+if {![file exists $devdir/idProduct]} {
+	after 1000
+}
+ReadUSBAttrs $devdir
 
-	ReadUSBAttrs $devdir
+# If target ID given, driver shall be loaded
+if [regexp -nocase {ok:[0-9a-f]{4}:[0-9a-f]{4}|ok:no_data} $report] {
+
 	if {[string length "$usb(idVendor)$usb(idProduct)"] < 8} {
 		regexp {ok:(\w{4}):(\w{4})} $report d usb(idVendor) usb(idProduct)
 	}
@@ -354,18 +360,27 @@ if [regexp -nocase {ok:[0-9a-f]{4}:[0-9a-f]{4}|ok:no_data} $report] {
 	after 500
 
 	Log "Now checking for newly created serial devices ..."
-	set devList2 [glob -nocomplain /dev/ttyUSB* /dev/ttyACM* /dev/ttyHS*]
+	set devList2 [ListSerialDevs]
 
 	if {[llength $devList1] >= [llength $devList2]} {
 		Log " no new serial devices found"
 		AddToList link_list $usb(idVendor):$usb(idProduct)
+
+		# If device is known, the sh wrapper will take care, else:
 		if {[InBindList $usb(idVendor):$usb(idProduct)] == 0} {
 			Log "Device not in bind_list"
 
-			CheckDriverBind "" $usb(idVendor) $usb(idProduct) ""
-			after 400
-			set devList2 [glob -nocomplain /dev/ttyUSB* /dev/ttyACM* /dev/ttyHS*]
-			if {[llength $devList1] >= [llength $devList2]} {
+			# Load driver
+			CheckDriverBind $usb(idVendor) $usb(idProduct)
+			set counter 0
+
+			# Old/slow systems may take a while to create the devices
+			while {[llength $devList1] >= [llength $devList2] && $counter < 14} {
+				after 500
+				set devList2 [ListSerialDevs]
+				incr counter
+			}
+			if {$counter == 14} {
 				Log " still no new serial devices found"
 			} else {
 				Log " driver successfully bound"
@@ -374,10 +389,13 @@ if [regexp -nocase {ok:[0-9a-f]{4}:[0-9a-f]{4}|ok:no_data} $report] {
 		}
 	} else {
 		Log " new serial devices found, driver has bound"
-		if {[llength [lsearch -all $devList2 *ttyUSB*]] > [llength [lsearch -all $devList1 *ttyUSB*]]} {
+		if {[llength [lsearch -glob -all $devList2 *ttyUSB*]] > [llength [lsearch -glob -all $devList1 *ttyUSB*]]} {
 			AddToList link_list $usb(idVendor):$usb(idProduct)
 		}
 	}
+} else {
+	# Just in case "NoDriverLoading" was added after the first bind
+	RemoveFromBindList $usb(idVendor):$usb(idProduct)
 }
 
 if [regexp {ok:$} $report] {
@@ -433,7 +451,7 @@ proc {ReadUSBAttrs} {dir} {
 global usb
 Log "USB dir exists: $dir"
 
-foreach attr {idVendor idProduct manufacturer product serial} {
+foreach attr {idVendor idProduct manufacturer product serial bNumConfigurations} {
 	if [file exists $dir/$attr] {
 		set rc [open $dir/$attr r]
 		set usb($attr) [read -nonewline $rc]
@@ -465,8 +483,8 @@ foreach teststring $stringList {
 	set blankstring ""
 	regsub -all {_} $matchstring { } blankstring
 	Log "matching $match($id)"
-	Log "  match string1: $matchstring"
-	Log "  match string2: $blankstring"
+	Log "  match string1 (exact):  $matchstring"
+	Log "  match string2 (blanks): $blankstring"
 	Log " device string: [set $match($id)]"
 	if {!([string match *$matchstring* [set $match($id)]] || [string match *$blankstring* [set $match($id)]])} {
 		return 0
@@ -524,9 +542,15 @@ set rc [open $configFile r]
 set lineList [split [read $rc] \n]
 close $rc
 foreach line $lineList {
-	regexp {^DriverModule[[:blank:]]*=[[:blank:]]*"?(\w+)"?} [string trim $line] d config(driverModule)
-	regexp {^DriverIDPath[[:blank:]]*=[[:blank:]]*?"?([/\-\w]+)"?} [string trim $line] d config(driverIDPath)
-	regexp {^WaitBefore[[:blank:]]*=[[:blank:]]*?(\d+)} [string trim $line] d config(waitBefore)
+	if [regexp {^DriverModule[[:blank:]]*=[[:blank:]]*"?(\w+)"?} [string trim $line] d config(driverModule)] {
+		Log "config: DriverModule set to $config(driverModule)"
+	}
+	if [regexp {^DriverIDPath[[:blank:]]*=[[:blank:]]*?"?([/\-\w]+)"?} [string trim $line] d config(driverIDPath)] {
+		Log "config: DriverIDPath set to $config(driverIDPath)"
+	}
+	if [regexp {^WaitBefore[[:blank:]]*=[[:blank:]]*?([0-9]+)} [string trim $line] d config(waitBefore)] {
+		Log "config: WaitBefore set to $config(waitBefore)"
+	}
 }
 set config(waitBefore) [string trimleft $config(waitBefore) 0]
 
@@ -534,35 +558,48 @@ set config(waitBefore) [string trimleft $config(waitBefore) 0]
 # end of proc {ParseDeviceConfig}
 
 
-proc {ConfigGet} {command config} {
+proc ConfigGet {command config} {
 
 global settings
 
 switch $command {
 
-	list {
+	conflist {
+		# Unpackaged configs first; sorting is essential for priority
+		set configList [lsort -decreasing [glob -nocomplain $settings(dbdir_etc)/$config*]]
+		set configList [concat $configList [lsort -decreasing [glob -nocomplain $settings(dbdir)/$config*]]]
 		if [file exists $settings(dbdir)/configPack.tar.gz] {
 			Log "Found packed config collection $settings(dbdir)/configPack.tar.gz"
-			if [catch {set configList [exec tar -tzf $settings(dbdir)/configPack.tar.gz 2>/dev/null]} err] {
+			if [catch {set packedList [exec tar -tzf $settings(dbdir)/configPack.tar.gz 2>/dev/null]} err] {
 				Log "Error: problem opening config package; tar returned\n $err"
 				return {}
 			}
-			set configList [split $configList \n]
-			set configList [lsearch -all -inline $configList $config*]
-		} else {
-			set configList [glob -nocomplain $settings(dbdir)/$config*]
+			set packedList [split $packedList \n]
+			set packedConfigList [lsort -decreasing [lsearch -glob -all -inline $packedList $config*]]
+			# Now add packaged configs with a mark, again sorted for priority
+			foreach packedConfig $packedConfigList {
+				lappend configList "pack/$packedConfig"
+			}
 		}
 
 		return $configList
 	}
-	config {
-		if [file exists $settings(dbdir)/configPack.tar.gz] {
-			set settings(tmpConfig) /tmp/usb_modeswitch.current_cfg
+	conffile {
+		if [regexp {^pack/} $config] {
+			set config [regsub {pack/} $config {}]
+			set settings(tmpConfig) /var/lib/usb_modeswitch/current_cfg
 			Log "Extracting config $config from collection $settings(dbdir)/configPack.tar.gz"
 			set wc [open $settings(tmpConfig) w]
 			puts -nonewline $wc [exec tar -xzOf $settings(dbdir)/configPack.tar.gz $config 2>/dev/null]
 			close $wc
 		} else {
+			if [regexp [list $settings(dbdir_etc)] $config] {
+				Log "Using config file from override folder $settings(dbdir_etc)"
+				set syslog_text "usb_modeswitch: using overriding config file $config; make sure this is intended"
+				catch {exec logger -p syslog.notice $syslog_text 2>/dev/null}
+				set syslog_text "usb_modeswitch: please report any new or corrected settings; otherwise, check for outdated files"
+				catch {exec logger -p syslog.notice $syslog_text 2>/dev/null}
+			}
 			set settings(tmpConfig) $config
 		}
 		return $settings(tmpConfig)
@@ -579,7 +616,6 @@ if {$logging == 0} {return}
 if {![info exists wc]} {
 	if [catch {set wc [open /var/log/usb_modeswitch_$device w]} err] {
 		set wc "error"
-		puts "usb_modeswitch error: Can't write to log file, $err"
 		return
 	}
 	puts $wc "\n\nUSB_ModeSwitch log from [clock format [clock seconds]]\n"
@@ -639,31 +675,31 @@ proc {hasInterrupt} {ifDir} {
 set linkpath /sys$path/device
 if [file exists $linkpath] {
 	if {[file type $linkpath] == "link"} {
-		set rawpath [file link $linkpath]
+		set rawpath [file readlink $linkpath]
 		set trimpath [regsub -all {\.\./} $rawpath {}]
-		if [file isdirectory /sys/$trimpath] {
+ 		if [file isdirectory /sys/$trimpath] {
 			set path /$trimpath
 		}
 	}
 }
 
-if {![regexp {ttyUSB\d+?} $path myPort]} {
+
+if {![regexp {ttyUSB[0-9]+} $path myPort]} {
 	Log "$loginit\nCould not find port name in path\n $path. Aborting"
 	return ""
 }
 set device $myPort
-Log $loginit
+Log "$loginit\nMy name is $myPort"
 
-if {![regexp {usb\d+/(\d+-\d+)/} $path d dev_top]} {
+if {![regexp {usb[0-9]+/([0-9]+-[0-9]+)/} $path d dev_top]} {
 	Log "Could not find device directory in path\n $path. Aborting"
 	return ""
 }
 
-if {![regexp "\\d+\\.(\\d+)/$myPort" $path d myIf]} {
+if {![regexp "\[0-9\]+\\.(\[0-9\]+)/$myPort" $path d myIf]} {
 	Log "Could not find interface number in path\n $path. Aborting"
 	return ""
 }
-#[regexp "\\.(\\d+)/$myPort" $path d myIf]
 
 if {![regexp "$dev_top:\[0-9\]" /sys$path ifRoot]} {
 	Log "Could not find interface number in path\n $path. Aborting"
@@ -735,34 +771,8 @@ return $symlinkName
 
 # Load and bind (serial) driver
 #
-proc {CheckDriverBind} {path vid pid prod} {
-global config logging device
-
-if {![info exists config]} {
-	set device "$vid:$pid"
-	Log "* called with --driver-bind: params $path $vid $pid $prod *"
-	set config(driverModule) "option"
-	set config(driverIDPath) "/sys/bus/usb-serial/drivers/option1"
-}
-# Some quirky udev versions do not give USB IDs
-if {$vid == ""} {
-	set vid $prod
-	if [regexp {/} $vid] {
-		set id_list [split $vid /]
-		set vid [format %04s [lindex $id_list 0]]
-		set pid [format %04s [lindex $id_list 1]]
-
-		# only check if vid/pid not given; else the sh script did
-		if {[InBindList $vid:$pid] == 0} {return}
-	} else {
-		return
-	}
-}
-set dirList [glob -nocomplain /sys$path/*]
-if [string match *ttyUSB* $dirList] {
-	Log "\nDriver is bound already. Aborting"
-	return
-}
+proc {CheckDriverBind} {vid pid} {
+global config
 
 set loader ""
 if [file exists /sbin/modprobe] {
@@ -805,6 +815,7 @@ if {$i < 50} {
 } else {
 	Log " \"$idfile\" not found, can't add ID to driver;\n check if kernel version is at least 2.6.27"
 	Log "Falling back to \"usbserial\""
+	set config(driverModule) usbserial
 	Log "\nTrying to unload driver \"$config(driverModule)\""
 	if [catch {exec $loader -r $config(driverModule)} err] {
 		Log " Running \"$loader $config(driverModule)\" gave an error:\n  $err"
@@ -812,7 +823,7 @@ if {$i < 50} {
 		return
 	}
 	Log "\nTrying to load driver \"usbserial\" with device IDs"
-	if [catch {set result [exec $loader -v usbserial --vendor=0x$vid --product=0x$pid]} err] {
+	if [catch {set result [exec $loader -v usbserial vendor=0x$vid product=0x$pid]} err] {
 		Log " Running \"$loader $config(driverModule)\" gave an error:\n  $err"
 	} else {
 		Log " Driver was loaded successfully:\n$result"
@@ -826,7 +837,7 @@ if {$i < 50} {
 # Check if USB ID is listed as needing driver binding
 proc {InBindList} {id} {
 
-set listfile /etc/usb_modeswitch.d/bind_list
+set listfile /var/lib/usb_modeswitch/bind_list
 if {![file exists $listfile]} {return 0}
 set rc [open $listfile r]
 set buffer [read $rc]
@@ -845,14 +856,16 @@ Log "No $id in bind_list"
 # Add USB ID to list of devices needing later treatment
 proc {AddToList} {name id} {
 
-if [file exists /etc/usb_modeswitch.d/last_seen] {
-	if [catch {file rename /etc/usb_modeswitch.d/last_seen /etc/usb_modeswitch.d/bind_list} err] {
+set listfile /var/lib/usb_modeswitch/$name
+set oldlistfile /etc/usb_modeswitch.d/bind_list
+
+if {($name == "bind_list") && [file exists $oldlistfile] && ![file exists $listfile]} {
+	if [catch {file rename $oldlistfile $listfile} err] {
 		Log "Error renaming the old bind list file ($err)"
 		return
 	}
 }
 
-set listfile /etc/usb_modeswitch.d/$name
 if [file exists $listfile] {
 	set rc [open $listfile r]
 	set buffer [read $rc]
@@ -869,7 +882,50 @@ puts $wc $buffer
 close $wc
 
 }
-# end of proc {AddToBindList}
+# end of proc {AddToList}
+
+
+# Remove USB ID from bind list (NoDriverLoading is set)
+proc {RemoveFromBindList} {id} {
+
+set listfile /var/lib/usb_modeswitch/bind_list
+if [file exists $listfile] {
+	set rc [open $listfile r]
+	set buffer [read $rc]
+	close $rc
+	set idList [split [string trim $buffer] \n]
+} else {
+	return
+}
+set idx [lsearch $idList $id]
+if {$idx > -1} {
+	set idList [lreplace $idList $idx $idx]
+} else {
+	return
+}
+if {[llength $idList] == 0} {
+	file delete $listfile
+	return
+}
+set buffer [join $idList "\n"]
+if [catch {set wc [open $listfile w]}] {return}
+puts $wc $buffer
+close $wc
+
+}
+# end of proc {RemoveFromBindList}
+
+# Return a list with all relevant serial devices that are present
+proc {ListSerialDevs} {} {
+
+set devList [glob -nocomplain /dev/ttyUSB* /dev/ttyACM* /dev/ttyHS*]
+if [file isdirectory /dev/tts] {
+	eval lappend devList [glob -nocomplain /dev/tts/*]
+}
+return $devList
+
+}
+# end of proc {ListSerialDevs}
 
 
 # The actual entry point
