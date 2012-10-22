@@ -1,0 +1,13 @@
+--- usb_modeswitch.tcl.orig	2012-10-22 09:05:42.000000000 +0400
++++ usb_modeswitch.tcl	2012-10-22 09:55:24.085928707 +0400
+@@ -822,6 +822,10 @@
+ } else {
+ 	Log " \"$idfile\" not found, check if kernel version is at least 2.6.27"
+ 	Log "Falling back to \"usbserial\""
++	Log "\nTrying to unload driver \"option\""
++	if [catch {exec $loader -r option} err] {
++		Log " Running \"$loader -r option\" gave an error:\n  $err"
++	}
+ 	set config(driverModule) usbserial
+ 	Log "\nTrying to unload driver \"usbserial\""
+ 	if [catch {exec $loader -r usbserial} err] {

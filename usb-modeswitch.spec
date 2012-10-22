@@ -1,13 +1,15 @@
 Summary: usb-modeswitch is  a mode switching tool for controlling "flip flop" (multiple device) USB gear
 Name: usb-modeswitch
 Version: 1.2.3
-Release: alt1
+Release: alt2
 License: GPL
 
 Group: System/Configuration/Hardware
 Url: http://www.draisberghof.de/usb_modeswitch/
 
 Source: %name-%version.tar
+
+Patch: usb_modeswitch_dispatcher-old-kernels.patch
 
 Requires: usb-modeswitch-data
 BuildRequires: tcl libusb-compat-devel
@@ -33,6 +35,7 @@ Needed for MTS (and others) branded e1550 modems.
 
 %prep
 %setup
+%patch
 
 %build
 %make
@@ -48,6 +51,9 @@ DESTDIR=%buildroot make install
 /lib/udev/*
 
 %changelog
+* Mon Oct 22 2012 Lenar Shakirov <snejok@altlinux.ru> 1.2.3-alt2
+- make work on old kernels (older than 2.6.27)
+
 * Thu Aug 09 2012 Anton V. Boyarshinov <boyarsh@altlinux.ru> 1.2.3-alt1
 - 1.2.3
 
