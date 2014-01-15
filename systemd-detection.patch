@@ -2,13 +2,15 @@ diff --git a/usb-modeswitch/usb_modeswitch.sh b/usb-modeswitch/usb_modeswitch.sh
 index 5c20059..0e57830 100755
 --- a/usb-modeswitch/usb_modeswitch.sh
 +++ b/usb-modeswitch/usb_modeswitch.sh
-@@ -83,7 +83,7 @@ while [ $count != 0 ]; do
+@@ -83,7 +83,6 @@ while [ $count != 0 ]; do
  	else
- 		if [ -e "/etc/init/usb-modeswitch-upstart.conf" ]; then
- 			exec /sbin/initctl emit --no-wait usb-modeswitch-upstart UMS_PARAM=$1
+-		if [ -e "/etc/init/usb-modeswitch-upstart.conf" ]; then
+-			exec /sbin/initctl emit --no-wait usb-modeswitch-upstart UMS_PARAM=$1
 -		elif [ -e "/etc/systemd/system/usb_modeswitch@.service" ]; then
-+		elif [ -e "/sys/fs/cgroup/systemd" ]; then
- 			exec /usr/bin/systemctl --no-block start usb_modeswitch@$1.service
+-			exec /usr/bin/systemctl --no-block start usb_modeswitch@$1.service
++		if [ -e "/sys/fs/cgroup/systemd" ]; then
++			systemctl=/bin/systemctl
++			exec $systemctl --no-block start usb_modeswitch@$1.service
  		else
  			exec /usr/sbin/usb_modeswitch_dispatcher --switch-mode $1 &
 diff --git a/usb-modeswitch/Makefile b/usb-modeswitch/Makefile
