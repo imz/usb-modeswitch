@@ -1,0 +1,36 @@
+diff --git a/usb-modeswitch/usb_modeswitch.sh b/usb-modeswitch/usb_modeswitch.sh
+index 5c20059..0e57830 100755
+--- a/usb-modeswitch/usb_modeswitch.sh
++++ b/usb-modeswitch/usb_modeswitch.sh
+@@ -83,7 +83,7 @@ while [ $count != 0 ]; do
+ 	else
+ 		if [ -e "/etc/init/usb-modeswitch-upstart.conf" ]; then
+ 			exec /sbin/initctl emit --no-wait usb-modeswitch-upstart UMS_PARAM=$1
+-		elif [ -e "/etc/systemd/system/usb_modeswitch@.service" ]; then
++		elif [ -e "/sys/fs/cgroup/systemd" ]; then
+ 			exec /usr/bin/systemctl --no-block start usb_modeswitch@$1.service
+ 		else
+ 			exec /usr/sbin/usb_modeswitch_dispatcher --switch-mode $1 &
+diff --git a/usb-modeswitch/Makefile b/usb-modeswitch/Makefile
+index 003f75d..25b3565 100644
+--- a/usb-modeswitch/Makefile
++++ b/usb-modeswitch/Makefile
+@@ -7,7 +7,7 @@ RM          = /bin/rm -f
+ OBJS        = usb_modeswitch.c
+ PREFIX      = $(DESTDIR)/usr
+ ETCDIR      = $(DESTDIR)/etc
+-SYSDIR      = $(ETCDIR)/systemd/system
++SYSDIR      = $(DESTDIR)/lib/systemd/system
+ UPSDIR      = $(ETCDIR)/init
+ UDEVDIR     = $(DESTDIR)/lib/udev
+ SBINDIR     = $(PREFIX)/sbin
+@@ -84,8 +84,7 @@ install-common: $(PROG) usb_modeswitch_dispatcher
+ 	install -D --mode=644 usb_modeswitch_dispatcher.1 $(MANDIR)/usb_modeswitch_dispatcher.1
+ 	install -D --mode=755 usb_modeswitch_dispatcher $(SBINDIR)/usb_modeswitch_dispatcher
+ 	install -d $(DESTDIR)/var/lib/usb_modeswitch
+-	test -d $(UPSDIR) -a -e /sbin/initctl && install --mode=644 usb-modeswitch-upstart.conf $(UPSDIR) || test 1
+-	test -d $(SYSDIR) -a -e /usr/bin/systemctl && install --mode=644 usb_modeswitch@.service $(SYSDIR) || test 1
++	install -D --mode=644 usb_modeswitch@.service $(SYSDIR)/usb_modeswitch@.service
+ 
+ install: install-script
+ 
