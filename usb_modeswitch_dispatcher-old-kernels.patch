@@ -3,11 +3,11 @@
 @@ -822,6 +822,10 @@
  } else {
  	Log " \"$idfile\" not found, check if kernel version is at least 2.6.27"
- 	Log "Falling back to \"usbserial\""
-+	Log "\nTrying to unload driver \"option\""
+ 	Log "Fall back to \"usbserial\""
++	Log "\nTry to unload driver \"option\""
 +	if [catch {exec $loader -r option} err] {
 +		Log " Running \"$loader -r option\" gave an error:\n  $err"
 +	}
  	set config(driverModule) usbserial
- 	Log "\nTrying to unload driver \"usbserial\""
+ 	Log "\nTry to unload driver \"usbserial\""
  	if [catch {exec $loader -r usbserial} err] {
