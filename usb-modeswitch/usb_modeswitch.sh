@@ -63,7 +63,7 @@ esac
 
 PATH=/bin:/sbin:/usr/bin:/usr/sbin
 if sd_booted; then
-	exec systemctl --no-block restart usb_modeswitch@"${1##*/}".service
+	RPM_NO_AUTOREQ= exec systemctl --no-block restart usb_modeswitch@"${1##*/}".service
 else
 	# only old distros, new udev will kill all subprocesses
 	exec 1<&- 2<&- 5<&- 7<&-
