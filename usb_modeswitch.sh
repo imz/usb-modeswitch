@@ -63,13 +63,12 @@ fi
 
 PATH=/bin:/sbin:/usr/bin:/usr/sbin
 init_path=`readlink -f /sbin/init`
-if [ `basename $init_path` = "systemd" ]; then
-	systemctl --no-block restart usb_modeswitch@$p2.service
-elif [ -e "/etc/init/usb-modeswitch-upstart.conf" ]; then
-	initctl emit --no-wait usb-modeswitch-upstart UMS_PARAM=$p2
+if sd_booted; then
+	systemctl=/bin/systemctl
+	exec $systemctl --no-block start usb_modeswitch@"${1%%/*}_${1##*/}".service
 else
 	# only old distros, new udev will kill all subprocesses
 	exec 1<&- 2<&- 5<&- 7<&-
-	exec usb_modeswitch_dispatcher --switch-mode $p2 &
+	exec usb_modeswitch_dispatcher --switch-mode "$p2"
 fi
 exit 0
