@@ -13,9 +13,10 @@ Source: %name-%version.tar
 Patch1: systemd-detection.patch
 
 Requires: usb-modeswitch-data
-BuildRequires: tcl libusb-devel
 Provides: usb_modeswitch
 Obsoletes: usb_modeswitch
+
+BuildRequires: tcl libusb-devel
 
 %description
 USB_ModeSwitch is (surprise!) a mode switching tool for controlling
