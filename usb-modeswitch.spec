@@ -41,7 +41,7 @@ Needed for MTS (and others) branded e1550 modems.
 %make
 
 %install
-DESTDIR=%buildroot make install
+%makeinstall_std
 
 %files
 %doc ChangeLog README
