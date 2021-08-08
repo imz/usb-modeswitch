@@ -9,8 +9,9 @@ Url: http://www.draisberghof.de/usb_modeswitch/
 
 Source: %name-%version.tar
 
-# is needed service >= 0.5.24 (sd_booted is used)
 Patch1: systemd-detection.patch
+# which uses:
+Requires: /sbin/sd_booted
 
 Requires: usb-modeswitch-data
 Provides: usb_modeswitch
