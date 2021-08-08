@@ -62,14 +62,10 @@ esac
 # command here and passes the suffix of the service name as the parameter.)
 
 PATH=/bin:/sbin:/usr/bin:/usr/sbin
-init_path=`readlink -f /sbin/init`
-if [ `basename $init_path` = "systemd" ]; then
-	systemctl --no-block restart usb_modeswitch@"${1##*/}".service
-elif [ -e "/etc/init/usb-modeswitch-upstart.conf" ]; then
-	initctl emit --no-wait usb-modeswitch-upstart UMS_PARAM="${1##*/}"
+if sd_booted; then
+	exec systemctl --no-block restart usb_modeswitch@"${1##*/}".service
 else
 	# only old distros, new udev will kill all subprocesses
 	exec 1<&- 2<&- 5<&- 7<&-
-	exec usb_modeswitch_dispatcher --switch-mode "${1##*/}" &
+	exec usb_modeswitch_dispatcher --switch-mode "${1##*/}"
 fi
-exit 0

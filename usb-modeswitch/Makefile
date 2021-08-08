@@ -7,7 +7,7 @@ RM          = /bin/rm -f
 OBJS        = usb_modeswitch.c
 PREFIX      = $(DESTDIR)/usr
 ETCDIR      = $(DESTDIR)/etc
-SYSDIR      = $(ETCDIR)/systemd/system
+SYSDIR      = $(DESTDIR)/lib/systemd/system
 UPSDIR      = $(ETCDIR)/init
 UDEVDIR     = $(DESTDIR)/lib/udev
 SBINDIR     = $(PREFIX)/sbin
@@ -61,8 +61,7 @@ install-common: $(PROG) $(DISPATCH)
 	install -D --mode=644 usb_modeswitch_dispatcher.1 $(MANDIR)/usb_modeswitch_dispatcher.1
 	install -D --mode=755 usb_modeswitch_dispatcher $(SBINDIR)/usb_modeswitch_dispatcher
 	install -d $(DESTDIR)/var/lib/usb_modeswitch
-	test -d $(UPSDIR) -a -e /sbin/initctl && install --mode=644 usb-modeswitch-upstart.conf $(UPSDIR) || test 1
-	test -d $(SYSDIR) -a \( -e /usr/bin/systemctl -o -e /bin/systemctl \) && install --mode=644 usb_modeswitch@.service $(SYSDIR) || test 1
+	install -D --mode=644 usb_modeswitch@.service $(SYSDIR)/usb_modeswitch@.service
 
 install: install-script
 
