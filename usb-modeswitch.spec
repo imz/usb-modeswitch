@@ -50,6 +50,60 @@ DESTDIR=%buildroot make install
 %_localstatedir/usb_modeswitch
 %_unitdir/*
 
+%package with-sysvinit-checkinstall
+Summary: install %name together with sysvinit (to check comaptibility)
+Group: Other
+BuildArch: noarch
+Requires: sysvinit
+Requires: %name = %EVR
+%files with-sysvinit-checkinstall
+%description with-sysvinit-checkinstall
+%summary.
+
+We are afraid that some scripts included in %name would produce
+auto-dependencies on some systemd-specific utilities, which would
+be incompatible with a SysV init system. Such dependencies of
+%name package would be incorrect, since the use of such utilities
+by %name is optional (i.e., only for the case when used in a system
+where systemd is active).
+
+Checking that this package can be susccessfully installed (as done
+by Girar) would detect such packaging errors.
+
+%package with-systemd-checkinstall
+Summary: install %name together with systemd (to check comaptibility)
+Group: Other
+BuildArch: noarch
+Requires: systemd
+Requires: %name = %EVR
+%files with-systemd-checkinstall
+%description with-systemd-checkinstall
+%summary.
+
+Checking that this package can be successfully installed (as done by Girar)
+would detect some packaging errors of %name that could be an obstacle
+for using %name in a system with systemd.
+
+%package without-systemd-utils-checkinstall
+Summary: install %name without systemd-utils (to check for excessive deps)
+Group: Other
+BuildArch: noarch
+Conflicts: systemd-utils
+Requires: %name = %EVR
+%files without-systemd-utils-checkinstall
+%description without-systemd-utils-checkinstall
+%summary.
+
+A dependency of %name on systemd-utils would be excessive, since these
+specifc uitilities are optionally used by %name (in the specific case
+when systemd is active in the system). So, it would be unwanted for some
+use cases to have such a dependency. (Even though installing systemd-utils
+doesn't imply having systemd installed, some may consider systemd-utils
+to be an excessive package in their systemd-free system.)
+
+Checking that this package can be successfully installed (as done by Girar)
+would confirm that there is no such dependency.
+
 %changelog
 * Mon Feb 10 2020 Sergey Y. Afonin <asy@altlinux.org> 2.6.0-alt1
 - 2.6.0 (ALT #33493)
