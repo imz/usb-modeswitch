@@ -1531,7 +1531,7 @@ int sendMessage(char* message, int count)
 
 int checkSuccess()
 {
-	int ret, i;
+	int ret, i = 0;
 	int newTargetCount, success=0;
 
 	SHOW_PROGRESS(output,"\nCheck for mode switch (max. %d times, once per second) ...\n", CheckSuccess);
@@ -1557,7 +1557,7 @@ int checkSuccess()
 	/* devh is 0 if device vanished during command transmission or if target params were given
 	 */
 	if (devh)
-		for (i=0; i < CheckSuccess; i++) {
+		for (; i < CheckSuccess; i++) {
 
 			/* Test if default device still can be accessed; positive result does
 			 * not necessarily mean failure
@@ -1586,7 +1586,7 @@ int checkSuccess()
 		 * description is read for syslog message
 		 */
 		// Wait counter passed on from previous loop
-		for (i=i; i < CheckSuccess; i++) {
+		for (; i < CheckSuccess; i++) {
 			SHOW_PROGRESS(output," Search for target devices ...\n");
 			dev = search_devices(&newTargetCount, TargetVendor, TargetProductList,
 					TargetClass, 0, SEARCH_TARGET);
