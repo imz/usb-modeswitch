@@ -33,7 +33,7 @@ Needed for MTS (and others) branded e1550 modems.
 
 %prep
 %setup
-%patch1 -p2
+#patch1 -p2
 
 %build
 %make
