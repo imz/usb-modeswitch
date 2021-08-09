@@ -38,6 +38,7 @@ Needed for MTS (and others) branded e1550 modems.
 %patch1 -p2
 
 %build
+export CFLAGS="%optflags"
 %make
 
 %install
