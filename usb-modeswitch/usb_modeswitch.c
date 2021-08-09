@@ -1531,8 +1531,8 @@ int sendMessage(char* message, int count)
 
 int checkSuccess()
 {
-	int ret, i = 0;
-	int newTargetCount, success=0;
+	int i = 0;
+	int success=0;
 
 	SHOW_PROGRESS(output,"\nCheck for mode switch (max. %d times, once per second) ...\n", CheckSuccess);
 	sleep(1);
@@ -1564,7 +1564,7 @@ int checkSuccess()
 			 */
 			SHOW_PROGRESS(output," Wait for original device to vanish ...\n");
 
-			ret = libusb_claim_interface(devh, Interface);
+			int ret = libusb_claim_interface(devh, Interface);
 			libusb_release_interface(devh, Interface);
 			if (ret < 0) {
 				SHOW_PROGRESS(output," Original device can't be accessed anymore. Good.\n");
@@ -1588,6 +1588,7 @@ int checkSuccess()
 		// Wait counter passed on from previous loop
 		for (; i < CheckSuccess; i++) {
 			SHOW_PROGRESS(output," Search for target devices ...\n");
+			int newTargetCount = 0;
 			dev = search_devices(&newTargetCount, TargetVendor, TargetProductList,
 					TargetClass, 0, SEARCH_TARGET);
 
