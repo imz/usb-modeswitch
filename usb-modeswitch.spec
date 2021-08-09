@@ -101,4 +101,3 @@ DESTDIR=%buildroot make install
 
 * Fri Sep 17 2010 Anton V. Boyarshinov <boyarsh@altlinux.ru> 1.1.4-alt1
 - first build
-
