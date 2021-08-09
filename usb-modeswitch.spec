@@ -1,4 +1,4 @@
-Summary: usb-modeswitch is  a mode switching tool for controlling "flip flop" (multiple device) USB gear
+Summary: mode switching tool for controlling "flip flop" (multiple device) USB gear
 Name: usb-modeswitch
 Version: 2.6.0
 Release: alt1
