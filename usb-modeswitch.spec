@@ -1,3 +1,5 @@
+%def_enable Werror
+
 Summary: mode switching tool for controlling "flip flop" (multiple device) USB gear
 Name: usb-modeswitch
 Version: 2.6.0
