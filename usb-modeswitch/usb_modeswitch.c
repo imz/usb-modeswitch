@@ -147,10 +147,10 @@ char verbose=0, show_progress=1, ResetUSB=0, CheckSuccess=0, config_read=0;
 char NoDriverLoading=0, sysmode=0, mbim=0;
 char StandardEject=0;
 
-char MessageContent[LINE_DIM];
-char MessageContent2[LINE_DIM];
-char MessageContent3[LINE_DIM];
-char TargetProductList[LINE_DIM];
+char MessageContent[LINE_DIM+1];
+char MessageContent2[LINE_DIM+1];
+char MessageContent3[LINE_DIM+1];
+char TargetProductList[LINE_DIM+1];
 char DefaultProductList[5];
 unsigned char ByteString[LINE_DIM/2];
 unsigned char buffer[BUF_SIZE];
@@ -364,9 +364,9 @@ int readArguments(int argc, char **argv)
 			case 'P': TargetProduct = strtol(optarg, NULL, 16); break;
 			case 'C': TargetClass = strtol(optarg, NULL, 16); break;
 			case 'm': MessageEndpoint = strtol(optarg, NULL, 16); break;
-			case 'M': strncpy(MessageContent, optarg, LINE_DIM); break;
-			case '2': strncpy(MessageContent2, optarg, LINE_DIM); break;
-			case '3': strncpy(MessageContent3, optarg, LINE_DIM); break;
+			case 'M': strlcpy(MessageContent, optarg, LINE_DIM+1); break;
+			case '2': strlcpy(MessageContent2, optarg, LINE_DIM+1); break;
+			case '3': strlcpy(MessageContent3, optarg, LINE_DIM+1); break;
 			case 'w': ReleaseDelay = strtol(optarg, NULL, 10); break;
 			case 'n': break;
 			case 'r': ResponseEndpoint = strtol(optarg, NULL, 16); break;
@@ -619,7 +619,7 @@ int main(int argc, char **argv)
 
 		Messages = (char**) calloc(MSG_DIM, sizeof(char*));
 		for (i = 0; i < MSG_DIM; i++) {
-			Messages[i] = (char*) calloc(LINE_DIM, sizeof(char));
+			Messages[i] = (char*) calloc(LINE_DIM+1, sizeof(char));
 			Messages[i][0] = '\0';
 		}
 
@@ -1875,7 +1875,7 @@ char* ReadParseParam(const char* FileName, char *VariableName)
 	char *FirstQuote, *LastQuote, *P1, *P2;
 	int Line=0;
 	unsigned Len=0, Pos=0;
-	static char Str[LINE_DIM];
+	static char Str[LINE_DIM+1];
 	char *token, *configPos;
 	FILE *file = NULL;
 
@@ -1886,7 +1886,7 @@ char* ReadParseParam(const char* FileName, char *VariableName)
 			// "Embedded" configuration data
 			configPos = (char*)FileName;
 			token = strtok(configPos, "\n");
-			strncpy(Str,token,LINE_DIM-1);
+			strlcpy(Str,token,LINE_DIM+1);
 		} else {
 			if (strcmp(FileName, "stdin")==0) {
 				if (verbose) fprintf(output,"\nRead long config from stdin\n");
@@ -1899,7 +1899,7 @@ char* ReadParseParam(const char* FileName, char *VariableName)
 				fprintf(stderr, "Error: Could not find file %s. Abort\n\n", FileName);
 				abortExit();
 			} else {
-				token = fgets(Str, LINE_DIM-1, file);
+				token = fgets(Str, LINE_DIM, file);
 			}
 		}
 		while (token != NULL && numLines < MAXLINES) {
@@ -1921,9 +1921,9 @@ char* ReadParseParam(const char* FileName, char *VariableName)
 			if (file == NULL) {
 				token = strtok(NULL, "\n");
 				if (token != NULL)
-					strncpy(Str,token,LINE_DIM-1);
+					strlcpy(Str,token,LINE_DIM+1);
 			} else
-				token = fgets(Str, LINE_DIM-1, file);
+				token = fgets(Str, LINE_DIM, file);
 		}
 		if (file != NULL)
 			fclose(file);
